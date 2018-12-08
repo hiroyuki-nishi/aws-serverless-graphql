@@ -21,8 +21,8 @@ trait AccountRepositoryOnDynamoDB extends DynamoDBWrapper {
 
   private def record2Entity(item: Item): Try[Option[Account]] = Try(item2Account(Option(item)))
 
-  def findBy(personId: String, email: Email): Either[RepositoryError, Option[Account]] =
-    getItem(AttrPersonId, personId, AttrEmail, email.value)(record2Entity)
+  def findBy(personId: String, email: String): Either[RepositoryError, Option[Account]] =
+    getItem(AttrPersonId, personId, AttrEmail, email)(record2Entity)
       .fold(
         e => Left(RepositoryError()),
         Right(_)
