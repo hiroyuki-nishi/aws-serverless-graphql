@@ -1,7 +1,7 @@
 package graphql
 
 import domain.{Page, RepositoryError}
-import dynamodb.{Person, PersonRepository}
+import dynamodb._
 import sangria.schema.{Argument, Field, ListType, ObjectType, OptionType, Schema, StringType, fields}
 
 object SchemaDefinition {
@@ -10,11 +10,18 @@ object SchemaDefinition {
     ObjectTypeDescription("person"),
     DocumentField("id", "name")
   )
+  // TODO Page[E]で返す方法
   val personsObject = deriveObjectType[PersonRepository, Person](
     ObjectTypeDescription("persons"),
     DocumentField("id", "name")
   )
+  // TODO case class
+  val accountObject = deriveObjectType[AccountRepository, Account](
+    ObjectTypeDescription("account"),
+    DocumentField("personId", "email")
+  )
 
+  val accountRepository = new AccountRepository with AccountRepositoryOnDynamoDB
   val idArgument = Argument("id", StringType, description = "id")
   val nameArgument = Argument("name", StringType, description = "name")
   val QueryType = ObjectType(
@@ -31,7 +38,11 @@ object SchemaDefinition {
       Field("persons", ListType(personsObject),
         resolve = ctx => ctx.ctx.findAllBy("person_1", 1, 1) match {
           case Right(value)=> value.data
-        })
+        }),
+      Field("accounts", OptionType(accountObject),
+        resolve = ctx => accountRepository.findBy("person_1", Email("administrator@hogeo.com")) match {
+          case Right(r)=> r.getOrElse(Account("xxx", "xxx"))
+        }),
     )
   )
   val PersonSchema = Schema(QueryType)
