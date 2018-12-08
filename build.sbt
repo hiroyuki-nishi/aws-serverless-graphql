@@ -48,6 +48,7 @@ lazy val infrastracture = (project in file("infrastracture"))
       "org.sangria-graphql" %% "sangria-spray-json" % "1.0.1",
       "io.circe" %%	"circe-core" % "0.9.2",
       "io.circe" %% "circe-parser" % "0.9.2",
-      "io.circe" %% "circe-optics" % "0.9.2"
+      "io.circe" %% "circe-optics" % "0.9.2",
+      "ch.megard" %% "akka-http-cors" % "0.3.1"
     )
   ).dependsOn(domain)
