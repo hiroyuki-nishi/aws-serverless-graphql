@@ -1,13 +1,17 @@
 package graphql
 
-import domain.RepositoryError
+import domain.{Page, RepositoryError}
 import dynamodb.{Person, PersonRepository}
-import sangria.schema.{Argument, Field, ObjectType, OptionType, Schema, StringType, fields}
+import sangria.schema.{Argument, Field, ListType, ObjectType, OptionType, Schema, StringType, fields}
 
 object SchemaDefinition {
   import sangria.macros.derive._
   val personObject = deriveObjectType[PersonRepository, Person](
     ObjectTypeDescription("person"),
+    DocumentField("id", "name")
+  )
+  val personsObject = deriveObjectType[PersonRepository, Person](
+    ObjectTypeDescription("persons"),
     DocumentField("id", "name")
   )
 
@@ -17,7 +21,6 @@ object SchemaDefinition {
     "Query", fields[PersonRepository, Unit](
       Field("person", OptionType(personObject),
         arguments = Nil,
-        //        arguments = idArgument :: Nil,
         //        arguments = idArgument :: nameArgument :: Nil,
         resolve = ctx => ctx.ctx findBy("person_1", "HOGE") match {
           //        resolve = ctx => ctx.ctx findBy(ctx.arg(idArgument), "HOGE") match {
@@ -25,8 +28,10 @@ object SchemaDefinition {
           case Right(value)=> value.getOrElse(Person("", "xxx"))
           case Left(_) => Person("", "error")
         }),
-//      Field("articles", ListType(PersonType),
-//        resolve = ctx => ctx.ctx.findAllPersons)
+      Field("persons", ListType(personsObject),
+        resolve = ctx => ctx.ctx.findAllBy("person_1", 1, 1) match {
+          case Right(value)=> value.data
+        })
     )
   )
   val PersonSchema = Schema(QueryType)

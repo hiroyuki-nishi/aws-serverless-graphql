@@ -28,5 +28,70 @@ trait PersonRepositoryOnDynamoDB extends DynamoDBWrapper {
         e => Left(RepositoryError()),
         Right(_)
       )
+
+  def findAllBy(id: String,
+                pageNo: Int,
+                pageSize: Int): Either[RepositoryError, domain.Page[Person] with Object {
+    val data: Seq[Person]
+
+    val pageSize: Int
+
+    val totalSize: Int
+
+    val lastPageNo: Int
+
+    val pageNo: Int
+  }] =
+    Try {
+      // TODO QueryRequestの理解
+      val countQueryRequest: QueryRequest = new QueryRequest(tableName)
+        .withSelect(Select.COUNT)
+        .withIndexName(IndexIdWithName) // TODO
+        .withKeyConditionExpression(s"$AttrId = :id") // TODO
+        .withExpressionAttributeValues(
+        Map(":id" -> new AttributeValue().withS(id)).asJava)
+
+      lazy val totalSize = dynamoDBClient.query(countQueryRequest).getCount
+      // TODO リファクタリング
+      val querySpec = new QuerySpec()
+        .withHashKey(AttrId, id)
+        .withScanIndexForward(false)
+        .withMaxPageSize(pageSize)
+
+      val table         = getTable(tableName).get
+      val index         = table.getIndex(IndexIdWithName) //TODO
+      val queryOutcomes = index.query(querySpec)
+
+      lazy val pages = queryOutcomes.pages().asScala
+      lazy val lastPageNo = (BigDecimal(totalSize) / BigDecimal(pageSize))
+        .setScale(0, scala.math.BigDecimal.RoundingMode.CEILING)
+        .toInt
+
+      if (pageNo <= lastPageNo) {
+        val page = pages.take(pageNo).last
+        val data = page.asScala.flatMap(item => item2Person(Option(item))).toSeq
+        PagePersonView.create(
+          totalSize = totalSize,
+          pageNo = pageNo,
+          pageSize = pageSize,
+          lastPageNo = lastPageNo,
+          data = data
+        )
+      } else if (pageNo == 1) {
+        PagePersonView.create(
+          totalSize = totalSize,
+          pageNo = pageNo,
+          pageSize = pageSize,
+          lastPageNo = lastPageNo,
+          data = Seq.empty
+        )
+      } else {
+        throw new IndexOutOfBoundsException(s"$pageNo")
+      }
+    }.fold({
+      case _: IndexOutOfBoundsException => Left(RepositoryError())
+    },
+      Right(_)
+    )
 }
 
