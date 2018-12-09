@@ -1,5 +1,9 @@
 package graphql
 
+import account.{Account, AccountRepository}
+import dynamodb.account.AccountRepositoryOnDynamoDB
+import person.{Person, PersonRepository}
+
 
 object SchemaDefinition {
   import domain.{Page, RepositoryError}

@@ -1,4 +1,4 @@
-package dynamodb
+package person
 
 import domain.{Page, RepositoryError}
 
@@ -8,4 +8,3 @@ trait PersonRepository {
                 pageNo: Int,
                 pageSize: Int): Either[RepositoryError, Page[Person]]
 }
-

@@ -1,4 +1,4 @@
-package dynamodb
+package account
 
 import domain.{Page, RepositoryError}
 

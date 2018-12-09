@@ -1,36 +1,31 @@
-package akkahttp
-
-
-
 import akka.actor.ActorSystem
 import akka.http.scaladsl.Http
 import akka.http.scaladsl.model.MediaTypes._
 import akka.http.scaladsl.model.StatusCodes._
 import akka.http.scaladsl.server.Directives._
-import akka.http.scaladsl.server._
 import akka.stream.ActorMaterializer
 import ch.megard.akka.http.cors.scaladsl.CorsDirectives._
 import ch.megard.akka.http.cors.scaladsl.settings.CorsSettings
 import de.heikoseeberger.akkahttpcirce.ErrorAccumulatingCirceSupport._
-import dynamodb.{PersonRepository, PersonRepositoryOnDynamoDB}
+import dynamodb.person.PersonRepositoryOnDynamoDB
 import graphql.GraphQLRequestUnmarshaller._
 import graphql.SchemaDefinition
 import io.circe._
 import io.circe.optics.JsonPath._
 import io.circe.parser._
+import person.PersonRepository
 import sangria.ast.Document
-import sangria.execution.deferred.DeferredResolver
 import sangria.execution.{ErrorWithResolver, Executor, QueryAnalysisError}
 import sangria.marshalling.circe._
 import sangria.parser.DeliveryScheme.Try
 import sangria.parser.{QueryParser, SyntaxError}
+
 import scala.util.control.NonFatal
 import scala.util.{Failure, Success}
 
-object PersonRepositoryOnAkkaHttp extends App {
+trait Route {
   implicit val system = ActorSystem("sangria-server")
   implicit val materializer = ActorMaterializer()
-
   import system.dispatcher
 
   def executeGraphQL(query: Document, operationName: Option[String], variables: Json) =
@@ -60,8 +55,7 @@ object PersonRepositoryOnAkkaHttp extends App {
   def formatError(message: String): Json =
     Json.obj("errors" → Json.arr(Json.obj("message" → Json.fromString(message))))
 
-  val corsSettings = CorsSettings.defaultSettings
-  val route = cors(corsSettings) {
+  val route = cors(CorsSettings.defaultSettings) {
     path("graphql") {
       get {
         explicitlyAccepts(`text/html`) {
@@ -105,12 +99,10 @@ object PersonRepositoryOnAkkaHttp extends App {
               }
           }
         }
-    } ~ cors(corsSettings) {
+    } ~ cors(CorsSettings.defaultSettings) {
       (get & pathEndOrSingleSlash) {
         redirect("/graphql", PermanentRedirect)
       }
     }
   }
-  print("server start!!!")
-  Http().bindAndHandle(route, "0.0.0.0", sys.props.get("http.port").fold(9999)(_.toInt))
 }

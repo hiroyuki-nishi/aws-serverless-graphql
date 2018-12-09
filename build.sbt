@@ -3,15 +3,9 @@ import sbt._
 import sbtrelease.Version
 
 name := "aws-serverless-graphql"
-
 resolvers += Resolver.sonatypeRepo("public")
 scalaVersion := "2.12.6"
 releaseNextVersion := { ver => Version(ver).map(_.bumpMinor.string).getOrElse("Error") }
-
-libraryDependencies ++= Seq(
-  "com.amazonaws" % "aws-lambda-java-events" % "2.2.1",
-  "com.amazonaws" % "aws-lambda-java-core" % "1.2.0"
-)
 
 scalacOptions ++= Seq(
   "-unchecked",
@@ -24,7 +18,6 @@ val commonLibraryDependencies = Seq(
   "com.amazonaws" % "aws-lambda-java-core" % "1.1.0",
   "io.spray" %%  "spray-json" % "1.3.5"
 )
-
 
 lazy val root = (project in file(".")).aggregate(person)
 

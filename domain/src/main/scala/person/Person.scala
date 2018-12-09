@@ -1,4 +1,4 @@
-package dynamodb
+package person
 
 import domain.Page
 

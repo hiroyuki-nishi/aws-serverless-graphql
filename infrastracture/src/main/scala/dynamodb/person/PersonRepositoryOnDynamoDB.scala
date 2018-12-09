@@ -1,28 +1,28 @@
-package dynamodb
+package dynamodb.person
 
 import com.amazonaws.services.dynamodbv2.document.Item
 import com.amazonaws.services.dynamodbv2.document.spec.QuerySpec
 import com.amazonaws.services.dynamodbv2.model.{AttributeValue, QueryRequest, Select}
 import domain.RepositoryError
-
+import dynamodb.DynamoDBWrapper
+import person.{PagePersonView, Person}
 import scala.collection.JavaConverters._
 import scala.util.Try
 
-trait AccountRepositoryOnDynamoDB extends DynamoDBWrapper {
-  lazy override val tableName = "accounts"
+trait PersonRepositoryOnDynamoDB extends DynamoDBWrapper {
+  lazy override val tableName  = "persons"
   lazy override val regionName = "ap-northeast-1"
+  val AttrId         = "id"
+  val AttrName       = "name"
+  val IndexIdWithName = s"${AttrId}-${AttrName}"
 
-  val AttrPersonId = "person_id"
-  val AttrEmail = "email"
-  val IndexIdWithName = s"${AttrPersonId}-${AttrEmail}"
+  private def item2Person(itemOpt: Option[Item]): Option[Person] =
+    itemOpt.map(item => Person(item.getString(AttrId), item.getString(AttrName)))
 
-  private def item2Account(itemOpt: Option[Item]): Option[Account] =
-    itemOpt.map(item => Account(item.getString(AttrPersonId), item.getString(AttrEmail)))
+  private def record2Entity(item: Item): Try[Option[Person]] = Try(item2Person(Option(item)))
 
-  private def record2Entity(item: Item): Try[Option[Account]] = Try(item2Account(Option(item)))
-
-  def findBy(personId: String, email: String): Either[RepositoryError, Option[Account]] =
-    getItem(AttrPersonId, personId, AttrEmail, email)(record2Entity)
+  def findBy(id: String, name: String): Either[RepositoryError, Option[Person]] =
+    getItem(AttrId, id, AttrName, name)(record2Entity)
       .fold(
         e => Left(RepositoryError()),
         Right(_)
@@ -30,11 +30,15 @@ trait AccountRepositoryOnDynamoDB extends DynamoDBWrapper {
 
   def findAllBy(id: String,
                 pageNo: Int,
-                pageSize: Int): Either[RepositoryError, domain.Page[Account] with Object {
-    val data: Seq[Account]
+                pageSize: Int): Either[RepositoryError, domain.Page[Person] with Object {
+    val data: Seq[Person]
+
     val pageSize: Int
+
     val totalSize: Int
+
     val lastPageNo: Int
+
     val pageNo: Int
   }] =
     Try {
@@ -42,13 +46,14 @@ trait AccountRepositoryOnDynamoDB extends DynamoDBWrapper {
       val countQueryRequest: QueryRequest = new QueryRequest(tableName)
         .withSelect(Select.COUNT)
         .withIndexName(IndexIdWithName) // TODO
-        .withKeyConditionExpression(s"$AttrPersonId = :id") //TODO
-        .withExpressionAttributeValues(Map(":id" -> new AttributeValue().withS(id)).asJava) //TODO
+        .withKeyConditionExpression(s"$AttrId = :id") // TODO
+        .withExpressionAttributeValues(
+        Map(":id" -> new AttributeValue().withS(id)).asJava)
 
       lazy val totalSize = dynamoDBClient.query(countQueryRequest).getCount
       // TODO リファクタリング
       val querySpec = new QuerySpec()
-        .withHashKey(AttrPersonId, id)
+        .withHashKey(AttrId, id)
         .withScanIndexForward(false)
         .withMaxPageSize(pageSize)
 
@@ -63,8 +68,8 @@ trait AccountRepositoryOnDynamoDB extends DynamoDBWrapper {
 
       if (pageNo <= lastPageNo) {
         val page = pages.take(pageNo).last
-        val data = page.asScala.flatMap(item => item2Account(Option(item))).toSeq
-        PageAccountView.create(
+        val data = page.asScala.flatMap(item => item2Person(Option(item))).toSeq
+        PagePersonView.create(
           totalSize = totalSize,
           pageNo = pageNo,
           pageSize = pageSize,
@@ -72,7 +77,7 @@ trait AccountRepositoryOnDynamoDB extends DynamoDBWrapper {
           data = data
         )
       } else if (pageNo == 1) {
-        PageAccountView.create(
+        PagePersonView.create(
           totalSize = totalSize,
           pageNo = pageNo,
           pageSize = pageSize,
@@ -88,4 +93,3 @@ trait AccountRepositoryOnDynamoDB extends DynamoDBWrapper {
       Right(_)
     )
 }
-
